@@ -40,7 +40,7 @@ const Categories = () => {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(5)].map((_, i) => (
-            <Card key={i}>
+            <Card key={i} className="border border-border bg-card/60">
               <CardHeader>
                 <Skeleton className="h-6 w-32" />
                 <Skeleton className="h-4 w-full" />
@@ -56,7 +56,7 @@ const Categories = () => {
           {categories.map((category) => (
             <Card 
               key={category.id}
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer hover:shadow-md transition-shadow border border-border bg-card/60 hover:bg-card"
               onClick={() => navigate(`/?category=${category.id}`)}
             >
               <CardHeader>

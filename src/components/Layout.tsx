@@ -12,11 +12,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LightbulbIcon, PlusCircle, LogOut, User } from 'lucide-react';
+import { LightbulbIcon, PlusCircle, LogOut, User, Moon, Sun } from 'lucide-react';
+import { useTheme } from './ThemeProvider';
 
 const Layout = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -37,6 +39,19 @@ const Layout = () => {
           </nav>
 
           <div className="flex items-center space-x-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
+
             {user ? (
               <>
                 <Button 
