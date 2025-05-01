@@ -4,12 +4,20 @@ export interface Profile {
   username: string;
   avatar_url: string | null;
   created_at: string;
+  points: number;
+  level: string;
 }
 
 export interface Category {
   id: string;
   name: string;
   description: string | null;
+  created_at: string;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
   created_at: string;
 }
 
@@ -21,12 +29,14 @@ export interface Idea {
   category_id: string | null;
   created_at: string;
   updated_at: string;
+  share_count: number;
   // These are for joined data
   profile?: Profile;
   category?: Category;
   likes_count?: number;
   comments_count?: number;
   user_has_liked?: boolean;
+  tags?: Tag[];
 }
 
 export interface Comment {
@@ -44,4 +54,33 @@ export interface Like {
   idea_id: string;
   user_id: string;
   created_at: string;
+}
+
+export interface Follow {
+  id: string;
+  follower_id: string;
+  following_id: string;
+  created_at: string;
+}
+
+export interface IdeaTag {
+  id: string;
+  idea_id: string;
+  tag_id: string;
+  created_at: string;
+  tag?: Tag;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  sender_id: string | null;
+  idea_id: string | null;
+  comment_id: string | null;
+  type: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+  // Joined data
+  sender?: Profile;
 }

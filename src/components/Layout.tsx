@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { LightbulbIcon, PlusCircle, LogOut, User, Moon, Sun } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
+import { SearchBar } from './SearchBar';
+import { NotificationsDropdown } from './NotificationsDropdown';
 
 const Layout = () => {
   const { user, signOut } = useAuth();
@@ -38,7 +40,9 @@ const Layout = () => {
             </Link>
           </nav>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <SearchBar />
+            
             <Button 
               variant="ghost" 
               size="icon" 
@@ -54,6 +58,8 @@ const Layout = () => {
 
             {user ? (
               <>
+                {user && <NotificationsDropdown />}
+                
                 <Button 
                   variant="outline" 
                   size="sm" 

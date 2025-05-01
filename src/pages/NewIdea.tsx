@@ -26,13 +26,15 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { fetchCategories, createIdea } from '@/services/api';
+import { fetchCategories, createIdea, awardPoints } from '@/services/api';
 import { Category } from '@/types/models';
+import { TagsInput } from '@/components/TagsInput';
 
 const formSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters').max(100, 'Title must be less than 100 characters'),
   description: z.string().min(20, 'Description must be at least 20 characters').max(2000, 'Description must be less than 2000 characters'),
   category_id: z.string().optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -49,6 +51,7 @@ const NewIdea = () => {
       title: '',
       description: '',
       category_id: undefined,
+      tags: [],
     },
   });
 
@@ -85,12 +88,18 @@ const NewIdea = () => {
 
     try {
       setIsLoading(true);
-      const newIdea = await createIdea({
-        title: values.title,
-        description: values.description,
-        category_id: values.category_id || null,
-        user_id: user.id,
-      });
+      const newIdea = await createIdea(
+        {
+          title: values.title,
+          description: values.description,
+          category_id: values.category_id || null,
+          user_id: user.id,
+        },
+        values.tags
+      );
+
+      // Award points for creating an idea
+      await awardPoints(user.id, 10);
 
       toast({
         title: 'Success!',
@@ -160,6 +169,26 @@ const NewIdea = () => {
                 </Select>
                 <FormDescription>
                   Choose a category that best fits your idea
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="tags"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tags</FormLabel>
+                <FormControl>
+                  <TagsInput 
+                    value={field.value || []} 
+                    onChange={field.onChange} 
+                  />
+                </FormControl>
+                <FormDescription>
+                  Add relevant tags to help others find your idea (optional)
                 </FormDescription>
                 <FormMessage />
               </FormItem>

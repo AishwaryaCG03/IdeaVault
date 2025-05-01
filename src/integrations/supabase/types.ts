@@ -69,12 +69,85 @@ export type Database = {
           },
         ]
       }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idea_tags: {
+        Row: {
+          created_at: string
+          id: string
+          idea_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idea_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idea_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idea_tags_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "idea_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ideas: {
         Row: {
           category_id: string | null
           created_at: string
           description: string
           id: string
+          share_count: number
           title: string
           updated_at: string
           user_id: string
@@ -84,6 +157,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          share_count?: number
           title: string
           updated_at?: string
           user_id: string
@@ -93,6 +167,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          share_count?: number
           title?: string
           updated_at?: string
           user_id?: string
@@ -150,24 +225,113 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          comment_id: string | null
+          created_at: string
+          id: string
+          idea_id: string | null
+          is_read: boolean
+          message: string
+          sender_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          idea_id?: string | null
+          is_read?: boolean
+          message: string
+          sender_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          idea_id?: string | null
+          is_read?: boolean
+          message?: string
+          sender_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
           id: string
+          level: string
+          points: number
           username: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           id: string
+          level?: string
+          points?: number
           username: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           id?: string
+          level?: string
+          points?: number
           username?: string
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }
