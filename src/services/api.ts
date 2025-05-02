@@ -62,7 +62,7 @@ export const searchIdeas = async (query: string): Promise<Idea[]> => {
     .from('ideas')
     .select(`
       *,
-      profile:profiles(username, avatar_url),
+      profile:profiles(username, avatar_url, level),
       category:categories(name, description)
     `)
     .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
@@ -167,11 +167,9 @@ export const updateIdea = async (id: string, idea: Partial<Idea>): Promise<Idea>
 };
 
 export const incrementShareCount = async (id: string): Promise<Idea> => {
+  // Fixed: Use the share_idea function instead of increment_counter directly
   const { data, error } = await supabase
-    .from('ideas')
-    .update({ share_count: supabase.rpc('increment_counter', { row_id: id }) })
-    .eq('id', id)
-    .select()
+    .rpc('share_idea', { idea_uuid: id })
     .single();
   
   if (error) throw error;
@@ -350,6 +348,34 @@ export const updateProfile = async (userId: string, updates: Partial<Profile>): 
   
   if (error) throw error;
   return data as Profile;
+};
+
+// Upload profile avatar
+export const uploadAvatar = async (userId: string, file: File): Promise<{ path: string; url: string }> => {
+  // Create a unique file name
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${userId}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+  const filePath = `avatars/${fileName}`;
+  
+  // Upload the file
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: true
+    });
+    
+  if (uploadError) throw uploadError;
+  
+  // Get the public URL
+  const { data } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(filePath);
+    
+  // Update the profile with the new avatar URL
+  await updateProfile(userId, { avatar_url: data.publicUrl });
+  
+  return { path: filePath, url: data.publicUrl };
 };
 
 // Follows API
@@ -554,9 +580,13 @@ export const shareIdea = async (ideaId: string): Promise<Idea> => {
   
   if (error) throw error;
   
-  // Award points to the idea owner
+  // Fixed: Make sure data exists before trying to access user_id
   if (data) {
-    await awardPoints(data.user_id, 3);
+    // Award points to the idea owner
+    const ideaData = data as Idea;
+    if (ideaData.user_id) {
+      await awardPoints(ideaData.user_id, 3);
+    }
   }
   
   return data as Idea;
@@ -568,7 +598,7 @@ export const fetchMilestones = async (ideaId: string): Promise<Milestone[]> => {
     .from('milestones')
     .select('*')
     .eq('idea_id', ideaId)
-    .order('due_date', { ascending: true, nullsLast: true });
+    .order('due_date', { ascending: true, nullsFirst: true }); // Fixed: changed nullsLast to nullsFirst
   
   if (error) throw error;
   return data as Milestone[];

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
+import { Camera } from 'lucide-react';
 import { 
   fetchProfile, 
   updateProfile, 
@@ -19,7 +20,8 @@ import {
   unfollowUser,
   checkIfFollowing,
   getFollowersCount,
-  getFollowingCount
+  getFollowingCount,
+  uploadAvatar
 } from '@/services/api';
 import { Profile, Idea } from '@/types/models';
 import { User } from 'lucide-react';
@@ -30,10 +32,12 @@ const ProfilePage = () => {
   const [userIdeas, setUserIdeas] = useState<Idea[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [isOwnProfile, setIsOwnProfile] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -152,6 +156,63 @@ const ProfilePage = () => {
     }
   };
 
+  // New function to handle avatar upload
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !event.target.files || event.target.files.length === 0) return;
+    
+    const file = event.target.files[0];
+    
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload a JPG, PNG, GIF, or WebP image',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Please upload an image smaller than 2MB',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    try {
+      setIsUploading(true);
+      const { url } = await uploadAvatar(user.id, file);
+      
+      // Update the profile in state
+      if (profile) {
+        setProfile({...profile, avatar_url: url});
+      }
+      
+      toast({
+        title: 'Avatar updated',
+        description: 'Your profile picture has been updated successfully',
+      });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload profile picture',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploading(false);
+      
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   // Calculate progress to next level
   const getProgressToNextLevel = (points: number, level: string) => {
     let nextLevelThreshold = 100;
@@ -183,6 +244,13 @@ const ProfilePage = () => {
     const progress = Math.min(100, Math.round((pointsForLevel / totalPointsNeeded) * 100));
     
     return progress;
+  };
+
+  // Hidden file input for avatar upload
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   if (isLoading) {
@@ -226,12 +294,36 @@ const ProfilePage = () => {
         <CardContent className="space-y-6">
           <div className="flex flex-col md:flex-row gap-4 md:gap-8">
             <div className="flex flex-col items-center">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={profile.avatar_url || ''} />
-                <AvatarFallback className="text-2xl">
-                  {profile.username.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={profile.avatar_url || ''} />
+                  <AvatarFallback className="text-2xl">
+                    {profile.username.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                
+                {isOwnProfile && (
+                  <>
+                    <Button 
+                      size="icon" 
+                      variant="outline"
+                      className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-background"
+                      onClick={triggerFileInput}
+                      disabled={isUploading}
+                    >
+                      <Camera size={16} />
+                    </Button>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      disabled={isUploading}
+                    />
+                  </>
+                )}
+              </div>
               <div className="mt-2 text-center">
                 <Badge variant="outline" className="mt-2">
                   {profile.level}
