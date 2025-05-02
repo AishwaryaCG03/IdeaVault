@@ -1,4 +1,5 @@
 
+
 -- This function is used to increment counters in tables
 CREATE OR REPLACE FUNCTION public.increment_counter(
   row_id UUID,
@@ -17,3 +18,4 @@ BEGIN
   RETURN result;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+

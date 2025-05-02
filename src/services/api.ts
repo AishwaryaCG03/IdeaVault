@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Idea, Comment, Category, Profile, Follow, Tag, IdeaTag, Notification, Milestone } from '@/types/models';
 

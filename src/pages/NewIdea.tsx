@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,8 +26,8 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { fetchCategories, createIdea, awardPoints } from '@/services/api';
-import { Category } from '@/types/models';
+import { fetchCategories, createIdea, awardPoints, fetchIdeaById, updateIdea, fetchIdeaTags } from '@/services/api';
+import { Category, Idea, IdeaTag } from '@/types/models';
 import { TagsInput } from '@/components/TagsInput';
 
 const formSchema = z.object({
@@ -40,8 +40,13 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const NewIdea = () => {
+  const { id } = useParams<{ id: string }>();
+  const isEditing = !!id;
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(isEditing);
+  const [existingIdea, setExistingIdea] = useState<Idea | null>(null);
+  const [existingTags, setExistingTags] = useState<IdeaTag[]>([]);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -66,52 +71,111 @@ const NewIdea = () => {
       return;
     }
 
-    const loadCategories = async () => {
+    const loadData = async () => {
       try {
-        const data = await fetchCategories();
-        setCategories(data);
+        setInitialLoading(true);
+        
+        // Load categories
+        const categoriesData = await fetchCategories();
+        setCategories(categoriesData);
+        
+        // If editing, load existing idea
+        if (isEditing && id) {
+          const ideaData = await fetchIdeaById(id);
+          
+          if (!ideaData) {
+            navigate('/not-found');
+            return;
+          }
+          
+          // Check if current user is the owner
+          if (ideaData.user_id !== user.id) {
+            navigate('/');
+            toast({
+              title: 'Access Denied',
+              description: 'You can only edit your own ideas',
+              variant: 'destructive',
+            });
+            return;
+          }
+          
+          setExistingIdea(ideaData);
+          
+          // Load existing tags
+          const tagsData = await fetchIdeaTags(id);
+          setExistingTags(tagsData);
+          
+          // Set form values
+          form.reset({
+            title: ideaData.title,
+            description: ideaData.description,
+            category_id: ideaData.category_id || undefined,
+            tags: tagsData.map(t => t.tag_id),
+          });
+        }
       } catch (error) {
-        console.error('Failed to fetch categories:', error);
+        console.error('Failed to load data:', error);
         toast({
           title: 'Error',
-          description: 'Failed to load categories',
+          description: 'Failed to load required data',
           variant: 'destructive',
         });
+      } finally {
+        setInitialLoading(false);
       }
     };
 
-    loadCategories();
-  }, [user, navigate]);
+    loadData();
+  }, [user, navigate, id, isEditing, form]);
 
   const onSubmit = async (values: FormValues) => {
     if (!user) return;
 
     try {
       setIsLoading(true);
-      const newIdea = await createIdea(
-        {
+      
+      if (isEditing && existingIdea) {
+        // Update existing idea
+        const updatedIdea = await updateIdea(existingIdea.id, {
           title: values.title,
           description: values.description,
           category_id: values.category_id || null,
-          user_id: user.id,
-        },
-        values.tags
-      );
+          updated_at: new Date().toISOString(),
+        });
 
-      // Award points for creating an idea
-      await awardPoints(user.id, 10);
+        toast({
+          title: 'Success!',
+          description: 'Your idea has been updated',
+        });
+        
+        navigate(`/idea/${updatedIdea.id}`);
+      } else {
+        // Create new idea
+        const newIdea = await createIdea(
+          {
+            title: values.title,
+            description: values.description,
+            category_id: values.category_id || null,
+            user_id: user.id,
+          },
+          values.tags
+        );
 
-      toast({
-        title: 'Success!',
-        description: 'Your idea has been shared',
-      });
-      
-      navigate(`/idea/${newIdea.id}`);
+        // Award points for creating an idea
+        await awardPoints(user.id, 10);
+
+        toast({
+          title: 'Success!',
+          description: 'Your idea has been shared',
+        });
+        
+        navigate(`/idea/${newIdea.id}`);
+      }
     } catch (error) {
-      console.error('Error creating idea:', error);
+      console.error('Error saving idea:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create idea. Please try again.',
+        description: 'Failed to save idea. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -119,9 +183,22 @@ const NewIdea = () => {
     }
   };
 
+  if (initialLoading) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">{isEditing ? 'Edit Idea' : 'Share Your Idea'}</h1>
+        <div className="space-y-4">
+          <div className="skeleton h-12 w-full" />
+          <div className="skeleton h-12 w-full" />
+          <div className="skeleton h-40 w-full" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Share Your Idea</h1>
+      <h1 className="text-3xl font-bold mb-6">{isEditing ? 'Edit Idea' : 'Share Your Idea'}</h1>
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -151,6 +228,7 @@ const NewIdea = () => {
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
+                  value={field.value}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -217,11 +295,11 @@ const NewIdea = () => {
           />
           
           <div className="flex justify-end space-x-4">
-            <Button type="button" variant="outline" onClick={() => navigate('/')}>
+            <Button type="button" variant="outline" onClick={() => navigate(isEditing ? `/idea/${id}` : '/')}>
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Submitting...' : 'Share Idea'}
+              {isLoading ? 'Saving...' : isEditing ? 'Update Idea' : 'Share Idea'}
             </Button>
           </div>
         </form>
