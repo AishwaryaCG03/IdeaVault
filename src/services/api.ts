@@ -1,6 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { Idea, Comment, Category, Profile, Follow, Tag, IdeaTag, Notification } from '@/types/models';
+import { Idea, Comment, Category, Profile, Follow, Tag, IdeaTag, Notification, Milestone } from '@/types/models';
 
 // Categories API
 export const fetchCategories = async (): Promise<Category[]> => {
@@ -89,11 +88,19 @@ export const fetchIdeas = async (categoryId?: string, tagId?: string): Promise<I
   }
 
   if (tagId) {
-    query = query.in('id', supabase
+    const ideaIds = await supabase
       .from('idea_tags')
       .select('idea_id')
-      .eq('tag_id', tagId)
-    );
+      .eq('tag_id', tagId);
+      
+    if (ideaIds.error) throw ideaIds.error;
+    
+    const ids = (ideaIds.data || []).map(item => item.idea_id);
+    if (ids.length > 0) {
+      query = query.in('id', ids);
+    } else {
+      return []; // No ideas with this tag
+    }
   }
 
   const { data, error } = await query;
@@ -286,6 +293,7 @@ export const toggleLike = async (ideaId: string, userId: string): Promise<boolea
       user_id: idea.user_id,
       sender_id: userId,
       idea_id: ideaId,
+      comment_id: null,
       type: 'like',
       message: `Someone liked your idea: "${idea.title}"`
     });
@@ -361,6 +369,8 @@ export const followUser = async (followerId: string, followingId: string): Promi
   await createNotification({
     user_id: followingId,
     sender_id: followerId,
+    idea_id: null,
+    comment_id: null,
     type: 'follow',
     message: 'Someone started following you'
   });
@@ -413,21 +423,21 @@ export const getFollowingCount = async (userId: string): Promise<number> => {
 export const getFollowers = async (userId: string): Promise<Profile[]> => {
   const { data, error } = await supabase
     .from('follows')
-    .select('follower:profiles(*)')
+    .select('profiles!follows_follower_id_fkey(*)')
     .eq('following_id', userId);
   
   if (error) throw error;
-  return data.map(item => item.follower) as Profile[];
+  return data.map(item => item.profiles) as unknown as Profile[];
 };
 
 export const getFollowing = async (userId: string): Promise<Profile[]> => {
   const { data, error } = await supabase
     .from('follows')
-    .select('following:profiles(*)')
+    .select('profiles!follows_following_id_fkey(*)')
     .eq('follower_id', userId);
   
   if (error) throw error;
-  return data.map(item => item.following) as Profile[];
+  return data.map(item => item.profiles) as unknown as Profile[];
 };
 
 // Notifications API
@@ -537,14 +547,9 @@ export const awardPoints = async (userId: string, points: number): Promise<Profi
 
 // Social Sharing
 export const shareIdea = async (ideaId: string): Promise<Idea> => {
-  // Increment share count
+  // Call the share_idea function to increment the share count
   const { data, error } = await supabase
-    .from('ideas')
-    .update({ 
-      share_count: supabase.rpc('increment', { row_id: ideaId, table_name: 'ideas', column_name: 'share_count' })
-    })
-    .eq('id', ideaId)
-    .select()
+    .rpc('share_idea', { idea_uuid: ideaId })
     .single();
   
   if (error) throw error;
@@ -555,4 +560,71 @@ export const shareIdea = async (ideaId: string): Promise<Idea> => {
   }
   
   return data as Idea;
+};
+
+// Milestones API
+export const fetchMilestones = async (ideaId: string): Promise<Milestone[]> => {
+  const { data, error } = await supabase
+    .from('milestones')
+    .select('*')
+    .eq('idea_id', ideaId)
+    .order('due_date', { ascending: true, nullsLast: true });
+  
+  if (error) throw error;
+  return data as Milestone[];
+};
+
+export const createMilestone = async (milestone: Omit<Milestone, 'id' | 'created_at' | 'updated_at'>): Promise<Milestone> => {
+  const { data, error } = await supabase
+    .from('milestones')
+    .insert(milestone)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data as Milestone;
+};
+
+export const updateMilestone = async (id: string, updates: Partial<Milestone>): Promise<Milestone> => {
+  const { data, error } = await supabase
+    .from('milestones')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data as Milestone;
+};
+
+export const deleteMilestone = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('milestones')
+    .delete()
+    .eq('id', id);
+  
+  if (error) throw error;
+};
+
+export const updateMilestoneStatus = async (id: string, status: Milestone['status'], completed: boolean): Promise<Milestone> => {
+  const updates: Partial<Milestone> = { 
+    status, 
+    updated_at: new Date().toISOString() 
+  };
+  
+  if (completed) {
+    updates.completed_at = new Date().toISOString();
+  } else if (status !== 'completed') {
+    updates.completed_at = null;
+  }
+  
+  const { data, error } = await supabase
+    .from('milestones')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data as Milestone;
 };

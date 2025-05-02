@@ -4,15 +4,16 @@ CREATE OR REPLACE FUNCTION public.increment_counter(
   row_id UUID,
   table_name TEXT,
   column_name TEXT
-) RETURNS SETOF RECORD AS $$
+) RETURNS RECORD AS $$
+DECLARE
+  result RECORD;
 BEGIN
   EXECUTE format(
-    'UPDATE %I SET %I = %I + 1 WHERE id = $1 RETURNING %I',
+    'UPDATE %I SET %I = %I + 1 WHERE id = $1 RETURNING *',
     table_name,
     column_name,
-    column_name,
     column_name
-  ) USING row_id;
-  RETURN;
+  ) INTO result USING row_id;
+  RETURN result;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

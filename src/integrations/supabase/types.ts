@@ -225,6 +225,50 @@ export type Database = {
           },
         ]
       }
+      milestones: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          idea_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          idea_id: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          idea_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milestones_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           comment_id: string | null
@@ -340,7 +384,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      share_idea: {
+        Args: { idea_uuid: string }
+        Returns: {
+          category_id: string | null
+          created_at: string
+          description: string
+          id: string
+          share_count: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+      }
     }
     Enums: {
       [_ in never]: never

@@ -37,6 +37,19 @@ export interface Idea {
   comments_count?: number;
   user_has_liked?: boolean;
   tags?: Tag[];
+  milestones?: Milestone[];
+}
+
+export interface Milestone {
+  id: string;
+  idea_id: string;
+  title: string;
+  description: string | null;
+  status: 'planned' | 'in_progress' | 'completed' | 'blocked';
+  due_date: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Comment {

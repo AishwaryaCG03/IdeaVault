@@ -15,7 +15,6 @@ serve(async (req) => {
   }
   
   try {
-    const url = new URL(req.url);
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -36,9 +35,9 @@ serve(async (req) => {
     const { data, error } = await supabaseClient.rpc(
       'increment_counter',
       { 
+        row_id: id, 
         table_name: table, 
-        column_name: column, 
-        row_id: id 
+        column_name: column 
       }
     );
     

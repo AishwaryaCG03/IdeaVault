@@ -21,10 +21,12 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/AuthContext';
-import { fetchIdeaById, fetchComments, createComment, deleteIdea, toggleLike, checkIfUserLiked } from '@/services/api';
+import { fetchIdeaById, fetchComments, createComment, deleteIdea, toggleLike, checkIfUserLiked, countLikes } from '@/services/api';
 import { Idea, Comment } from '@/types/models';
-import { Heart, MessageSquare, Calendar, Trash2, Edit, Share2 } from 'lucide-react';
+import { Heart, MessageSquare, Calendar, Trash2, Edit } from 'lucide-react';
 import { format } from 'date-fns';
+import { SocialShare } from '@/components/SocialShare';
+import { MilestonesSection } from '@/components/MilestonesSection';
 
 const IdeaDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -61,6 +63,10 @@ const IdeaDetail = () => {
           const hasLiked = await checkIfUserLiked(id, user.id);
           setUserHasLiked(hasLiked);
         }
+
+        // Get likes count
+        const likes = await countLikes(id);
+        setLikesCount(likes);
         
       } catch (error) {
         console.error('Error loading idea:', error);
@@ -141,6 +147,7 @@ const IdeaDetail = () => {
         profile: {
           username: user.user_metadata.username || 'Anonymous',
           avatar_url: user.user_metadata.avatar_url || null,
+          level: user.user_metadata.level || 'Beginner',
         }
       };
       
@@ -184,14 +191,6 @@ const IdeaDetail = () => {
       setIsDeleting(false);
     }
   };
-
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast({
-      title: 'Link copied',
-      description: 'Idea link copied to clipboard',
-    });
-  };
   
   if (isLoading) {
     return (
@@ -210,6 +209,7 @@ const IdeaDetail = () => {
   if (!idea) return null;
 
   const isOwner = user?.id === idea.user_id;
+  const pageUrl = window.location.href;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -219,9 +219,12 @@ const IdeaDetail = () => {
           <h1 className="text-3xl font-bold">{idea.title}</h1>
           
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={handleShare}>
-              <Share2 className="h-5 w-5" />
-            </Button>
+            <SocialShare 
+              title={idea.title} 
+              url={pageUrl} 
+              ideaId={idea.id} 
+              description={idea.description}
+            />
             
             {isOwner && (
               <>
@@ -308,6 +311,9 @@ const IdeaDetail = () => {
           <span>{comments.length} Comments</span>
         </div>
       </div>
+
+      {/* Implementation Tracking */}
+      <MilestonesSection ideaId={idea.id} isOwner={isOwner} />
 
       <Separator />
 
